@@ -61,6 +61,8 @@ pub mod standard_nodes;
 #[cfg(feature = "pretty-printing")]
 mod pretty_print;
 
+use core::ops::Range;
+
 use node::MemoryReservation;
 use parsing::{BigEndianU32, CStr, FdtData};
 use standard_nodes::{Aliases, Chosen, Cpu, Memory, MemoryRange, MemoryRegion, Root};
@@ -253,7 +255,9 @@ impl<'a> Fdt<'a> {
         Memory { node: self.find_node("/memory").expect("requires memory node") }
     }
 
-    /// Returns an iterator over the memory reservations
+    /// Returns an iterator over the memory reservations.
+    ///
+    /// Note that this may or may not include the range occupied by the FDT itself ([fdt_address_range](Self::fdt_address_range))).
     pub fn memory_reservations(&self) -> impl Iterator<Item = MemoryReservation> + 'a {
         let mut stream = FdtData::new(&self.data[self.header.off_mem_rsvmap.get() as usize..]);
         let mut done = false;
@@ -272,6 +276,12 @@ impl<'a> Fdt<'a> {
 
             Some(res)
         })
+    }
+
+    /// Returns the range of memory occupied by the FDT structure
+    pub fn fdt_address_range(&self) -> Range<usize> {
+        let start = self.data.as_ptr().addr();
+        start..start + self.data.len() as usize
     }
 
     /// Return the root (`/`) node, which is always available
